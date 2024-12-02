@@ -1,92 +1,50 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#include QMK_KEYBOARD_H
 
-// Enumeração para keycodes customizados
-enum custom_keycodes {
-    QWERTY = SAFE_RANGE,
-    LOWER,
-    RAISE,
-    FUNC,
-    BACKLIT,
-    FN_TOGGLE  // Novo keycode customizado
+/ {
+    behaviors {
+        fn_toggle: layer_toggle {
+            compatible = "zmk,behavior-layer-toggle";
+            layer = <_FUNC>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+
+        default_layer {
+            bindings = <
+                &kp TAB   &kp Q   &kp W   &kp E   &kp R   &kp T          &kp Y   &kp U   &kp I   &kp O   &kp P   &kp GRAVE
+                &kp LALT  &kp A   &kp S   &kp D   &kp F   &kp G          &kp H   &kp J   &kp K   &kp L   &kp SCLN &kp QUOT
+                &kp LSFT  &kp Z   &kp X   &kp C   &kp V   &kp B          &kp N   &kp M   &kp COMMA &kp DOT &kp SLASH &fn_toggle
+                &kp LCTRL &kp ENTER &lt LOWER TAB &lt RAISE BSPC &kp SPACE &kp RSFT
+            >;
+        };
+
+        lower_layer {
+            bindings = <
+                &trans    &kp EXCL &kp AT    &kp HASH  &kp DOLLAR &kp PERC  &kp CIRCUMFLEX &kp AMPS &kp ASTRK &kp LPAR &kp RPAR &kp DEL
+                &trans    &kp 1    &kp 2     &kp 3     &kp 4      &kp 5     &kp 6          &kp 7    &kp 8     &kp 9    &kp 0    &trans
+                &trans    &none    &kp TILDE &kp GRAVE &kp LBRACKET &kp LCBRACKET &kp RCBRACKET &kp RBRACKET &kp COMMA &kp DOT &kp SCLN &trans
+                &kp TRANS &kp TRANS &mo LOWER &kp TRANS &kp TRANS &kp COLON
+            >;
+        };
+
+        raise_layer {
+            bindings = <
+                &kp ESC   &kp SLASH &kp QUESTION &kp UP &kp PLUS &none     &none     &kp MINUS &kp HOME  &kp PGUP &kp EQL  &kp BSPC
+                &kp TRANS &none     &kp LEFT     &kp DOWN &kp RIGHT &none   &none     &kp END   &kp PGDN &kp PIPE &kp NONE
+                &kp TRANS &kp BSLASH &kp LBRACKET &kp COPY &kp PASTE &none &kp PLAY  &kp PREV  &kp NEXT  &kp VOLD &kp VOLU &none
+                &kp CTL_ESC &kp TRANS &mo RAISE &kp TRANS &kp TRANS &kp TRANS
+            >;
+        };
+
+        func_layer {
+            bindings = <
+                &none &kp F1 &kp F2 &kp F3 &kp F4 &kp F5 &kp F6 &kp F7 &kp F8 &kp F9 &kp F10 &none
+                &none &kp F11 &kp F12 &none &none &none &none &none &none &none &none &none
+                &none &kp CAPS &none &none &none &none &kp BT1 &kp BT2 &kp BT3 &none &bootloader
+                &none &none &none &none &none &none
+            >;
+        };
+    };
 };
-
-// Macros úteis
-#define GUI_ENT  GUI_T(KC_ENT)
-#define LOW_TAB  LT(_LOWER, KC_TAB)
-#define OSL_FUN  OSL(_FUNC)
-#define OSM_AGR  OSM(MOD_RALT)
-#define OSM_LCTL OSM(MOD_LCTL)
-#define OSM_SFT  OSM(MOD_LSFT)
-#define RSE_BSP  LT(_RAISE, KC_BSPC)
-#define CTL_ESC  LCTL_T(KC_ESC)
-
-// Variáveis para o estado da tecla FN_TOGGLE
-static uint16_t func_pressed_time = UINT16_MAX;  // Inicializa como "não pressionado"
-static uint16_t last_press_time = UINT16_MAX;   // Controle de duplo clique
-
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    switch (keycode) {
-        case FN_TOGGLE:
-            if (record->event.pressed) {
-                uint16_t now = timer_read();
-                // Verifica se houve tempo suficiente desde o último evento para evitar ruídos
-                if (timer_elapsed(last_press_time) > 50) { // Ajusta o tempo para evitar ruídos
-                    if (timer_elapsed(last_press_time) < 300) { // Duplo clique
-                        layer_off(_FUNC);  // Desativa a camada de função
-                    } else {
-                        func_pressed_time = now;  // Marca o tempo do clique válido
-                    }
-                    last_press_time = now;
-                }
-            } else {
-                if (func_pressed_time != UINT16_MAX && timer_elapsed(func_pressed_time) > 200) { // Clique longo
-                    layer_on(_FUNC);  // Ativa permanentemente a camada de função
-                } else if (func_pressed_time != UINT16_MAX && timer_elapsed(last_press_time) >= 300) {
-                    layer_on(_FUNC);  // Ativa temporariamente a camada
-                }
-                // Reseta o estado após a liberação
-                func_pressed_time = UINT16_MAX;
-            }
-            return false;  // Ignora o comportamento padrão do keycode
-        default:
-            return true;  // Processa os outros keycodes normalmente
-    }
-}
-
-const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [_QWERTY] = LAYOUT(
-        KC_TAB,    KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                     KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_GRV,
-        OSM(MOD_LALT), KC_A,    KC_S,    KC_D,    KC_F,    KC_G,                 KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT,
-        OSM(MOD_LSFT), KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,                 KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, FN_TOGGLE,
-                                                OSM_LCTL, GUI_ENT, LOW_TAB,  RSE_BSP, KC_SPC,  OSM_SFT
-    ),
-    [_LOWER] = LAYOUT(
-        _______, KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC,                   KC_TILD, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, KC_DEL,
-        _______, KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                      KC_6,    KC_7,    KC_8,    KC_9,    KC_0,    _______,
-        _______, XXXXXXX, KC_TILD, KC_GRV,  KC_LBRC, KC_LCBR,                   KC_RCBR, KC_RBRC, KC_COMM, KC_DOT,  KC_SCLN, _______,
-                                                KC_TRNS, KC_TRNS, LOWER,     KC_TRNS, KC_TRNS, KC_COLON
-    ),
-    [_RAISE] = LAYOUT(
-        KC_ESC,   KC_SLSH, KC_QUES, KC_UP,   KC_PLUS, _______,                  _______, KC_MINS, KC_HOME, KC_PGUP, KC_EQL,  KC_BSPC,
-        _______,  _______, KC_LEFT, KC_DOWN, KC_RGHT, _______,                  _______, _______, KC_END,  KC_PGDN, KC_PIPE, _______,
-        _______,  KC_BSLS, KC_LBRC, KC_COPY, KC_PSTE, _______,                  KC_MPLY, KC_MPRV, KC_MNXT, KC_VOLD, KC_VOLU, _______,
-                                                CTL_ESC, KC_TRNS, XXXXXXX,   RAISE, KC_TRNS, KC_TRNS
-    ),
-    [_FUNC] = LAYOUT(
-        _______, KC_F1,    KC_F2,   KC_F3,   KC_F4,   KC_F5,                    KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  _______,
-        _______, KC_F11,   KC_F12,  XXXXXXX, XXXXXXX, XXXXXXX,                  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, _______,
-        _______, KC_CAPS,  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,                  KC_BT1,  KC_BT2,  KC_BT3,  XXXXXXX, QK_BOOT, XXXXXXX,
-                                                XXXXXXX, XXXXXXX, XXXXXXX,   XXXXXXX, FUNC,    XXXXXXX
-    )
-};
-
-uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
-    switch (keycode) {
-        case LT(_RAISE, KC_BSPC):
-        case LT(_LOWER, KC_TAB):
-            return 200;  // Ajusta o tempo de tapping para teclas modificadas
-        default:
-            return TAPPING_TERM;
-    }
-}
